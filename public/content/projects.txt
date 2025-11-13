@@ -1,0 +1,3 @@
+Automated soil-moisture driven irrigation
+Light intensity mapping for greenhouse optimization
+Cloud-native dashboard for remote crop monitoring

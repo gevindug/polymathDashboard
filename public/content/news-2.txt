@@ -1,0 +1,2 @@
+Student IoT Showcase
+Final-year students presented their projects on remote greenhouse monitoring, predictive analytics and cloud dashboards, built entirely on open-source technologies.

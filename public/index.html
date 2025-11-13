@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ITI with Polymath</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- MQTT.js -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      /* Palette from Polymath logo */
+      --pm-purple: #a377ac;
+      --pm-purple-dark: #7b3f8e;
+      --pm-purple-soft: #f4ecf7;
+      --pm-purple-soft-strong: #eed9f5;
+      --pm-gray-dark: #3d3f48;
+      --pm-gray-mid: #8c92a0;
+      --pm-gray-soft: #e6e3ea;
+      --pm-bg: #fbf7ff;
+      --pm-bg-gradient: radial-gradient(circle at top left, #f4ecf7 0, #fbf7ff 45%, #ffffff 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--pm-bg-gradient);
+      color: var(--pm-gray-dark);
+      display: flex;
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    /* HEADER WITH TWO LOGOS */
+    header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.9rem 1.25rem;
+      border-radius: 1.25rem;
+      background: linear-gradient(120deg, #fdfbff 0%, #f4ecf7 50%, #ffffff 100%);
+      border: 1px solid var(--pm-purple-soft-strong);
+      box-shadow: 0 20px 40px rgba(123, 63, 142, 0.18);
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(163, 119, 172, 0.3), transparent 60%);
+      top: -120px;
+      right: -60px;
+      pointer-events: none;
+    }
+
+    .header-logo-left,
+    .header-logo-right {
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-img {
+      height: 180px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .header-center {
+      text-align: center;
+      z-index: 1;
+    }
+
+    .header-center h1 {
+      font-size: 2.25rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--pm-purple-dark);
+    }
+
+    .header-center span {
+      display: block;
+      font-size: 1.0rem;
+      color: var(--pm-gray-dark);
+      margin-top: 0.15rem;
+    }
+
+    .header-pill {
+      margin-top: 0.35rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(163, 119, 172, 0.12);
+      border: 1px solid rgba(163, 119, 172, 0.4);
+      color: var(--pm-purple-dark);
+    }
+
+    .header-pill-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #34d399;
+    }
+
+    /* LAYOUT */
+    .grid {
+      display: grid;
+      grid-template-columns: 1.7fr 1.3fr;
+      gap: 1.2rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 1.25rem;
+      padding: 1.1rem 1.25rem;
+      border: 1px solid var(--pm-purple-soft-strong);
+      box-shadow: 0 12px 30px rgba(75, 79, 89, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(163, 119, 172, 0.12), transparent 55%);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .card-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-header h2 {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--pm-purple-dark);
+    }
+
+    .pill {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--pm-purple-soft-strong);
+      background: rgba(244, 236, 247, 0.9);
+      color: var(--pm-purple-dark);
+    }
+
+    /* ENVIRONMENT WIDGET */
+    .env-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .env-item {
+      background: var(--pm-purple-soft);
+      border-radius: 0.9rem;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid rgba(163, 119, 172, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .env-item::after {
+      content: "";
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      border-radius: 999px;
+      border: 1px solid rgba(163, 119, 172, 0.3);
+      bottom: -70px;
+      right: -40px;
+    }
+
+    .env-label {
+      font-size: 0.75rem;
+      color: var(--pm-gray-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .env-value {
+      margin-top: 0.08rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--pm-purple-dark);
+      display: flex;
+      align-items: baseline;
+      gap: 0.12rem;
+    }
+
+    .env-unit {
+      font-size: 0.78rem;
+      color: var(--pm-gray-dark);
+    }
+
+    .env-chip {
+      display: inline-flex;
+      margin-top: 0.15rem;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      background: #ffffffaa;
+      color: var(--pm-purple-dark);
+    }
+
+    .updated-at {
+      margin-top: 0.65rem;
+      font-size: 0.78rem;
+      color: var(--pm-gray-mid);
+      text-align: right;
+    }
+
+    /* WATERING WIDGET WITH PLANT */
+    .watering-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-top: 0.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .watering-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 999px;
+      background: var(--pm-purple-soft);
+      border: 1px solid rgba(163, 119, 172, 0.4);
+      color: var(--pm-purple-dark);
+    }
+
+    .watering-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
+    }
+
+    .watering-dot.off {
+      background: #f97373;
+      box-shadow: 0 0 10px rgba(249, 115, 115, 0.7);
+    }
+
+    .watering-summary {
+      font-size: 0.8rem;
+      color: var(--pm-gray-mid);
+      text-align: right;
+    }
+
+    /* Plant visual */
+    .plant-wrapper {
+      margin-top: 0.6rem;
+      background: #fbf9ff;
+      border-radius: 0.9rem;
+      border: 1px solid rgba(230, 227, 234, 0.95);
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      height: 130px;
+    }
+
+    .plant-img {
+      max-height: 110px;
+      width: auto;
+      transition: transform 0.4s ease, filter 0.4s ease;
+      filter: saturate(0.7);
+    }
+
+    .plant-wrapper.watering .plant-img {
+      filter: saturate(1.15);
+      transform: translateY(3px);
+    }
+
+    .plant-rain {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background-image: linear-gradient(
+        to bottom,
+        rgba(163, 119, 172, 0.18) 0,
+        rgba(163, 119, 172, 0.02) 60%,
+        transparent 100%
+      );
+      mix-blend-mode: soft-light;
+      animation: rain-fall 0.6s linear infinite;
+    }
+
+    .plant-wrapper.watering .plant-rain {
+      opacity: 1;
+    }
+
+    @keyframes rain-fall {
+      0% { transform: translateY(-40px); }
+      100% { transform: translateY(40px); }
+    }
+
+    .chart-container {
+      margin-top: 0.75rem;
+      background: #fbf9ff;
+      border-radius: 0.9rem;
+      padding: 0.75rem;
+      border: 1px solid rgba(230, 227, 234, 0.95);
+      height: 170px;
+    }
+
+    #wateringList {
+      margin-top: 0.7rem;
+      font-size: 0.8rem;
+      max-height: 150px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
+    #wateringList div {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.26rem 0;
+      border-bottom: 1px dashed rgba(230, 227, 234, 0.9);
+    }
+
+    #wateringList span:last-child {
+      color: var(--pm-purple-dark);
+    }
+
+    /* NEWS SECTION */
+    .news {
+      margin-top: 0.4rem;
+    }
+
+    .news-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.4rem;
+    }
+
+    .news-header h2 {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--pm-purple-dark);
+    }
+
+    .news-header span {
+      font-size: 0.8rem;
+      color: var(--pm-gray-mid);
+    }
+
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.8rem;
+    }
+
+    @media (max-width: 900px) {
+      .news-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .news-card {
+      background: #ffffff;
+      border-radius: 1rem;
+      padding: 0.7rem 0.85rem;
+      border: 1px solid var(--pm-purple-soft-strong);
+      box-shadow: 0 6px 14px rgba(123, 63, 142, 0.09);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .news-title {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--pm-purple-dark);
+    }
+
+    .news-body {
+      font-size: 0.8rem;
+      color: var(--pm-gray-dark);
+      line-height: 1.45;
+    }
+
+    .news-meta {
+      margin-top: 0.1rem;
+      font-size: 0.75rem;
+      color: var(--pm-gray-mid);
+    }
+
+    /* BOTTOM CONTENT (FROM TEXT FILES) */
+    .about {
+      margin-top: 0.8rem;
+      padding: 1rem 1.25rem;
+      border-radius: 1.25rem;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--pm-purple-soft-strong);
+      box-shadow: 0 10px 18px rgba(75, 79, 89, 0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .about::before {
+      content: "";
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      border-radius: 999px;
+      border: 1px solid rgba(163, 119, 172, 0.24);
+      top: -180px;
+      left: -80px;
+    }
+
+    .about-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .about h2 {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--pm-purple-dark);
+      margin-bottom: 0.45rem;
+    }
+
+    .about p {
+      font-size: 0.9rem;
+      color: var(--pm-gray-dark);
+      line-height: 1.55;
+      margin-bottom: 0.35rem;
+    }
+
+    .about ul {
+      margin-top: 0.4rem;
+      padding-left: 1rem;
+      font-size: 0.9rem;
+      color: var(--pm-gray-mid);
+    }
+
+    .about li {
+      margin-bottom: 0.2rem;
+    }
+
+    .badge-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin: 0.3rem 0 0.4rem;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid rgba(163, 119, 172, 0.3);
+      background: rgba(163, 119, 172, 0.12);
+      color: var(--pm-purple-dark);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- HEADER WITH ITI & POLYMATH LOGOS -->
+    <header>
+      <div class="header-logo-left">
+        <img src="iti-logo.png" alt="ITI Logo" class="logo-img" />
+      </div>
+      <div class="header-center">
+        <h1>ITI WITH POLYMATH</h1>
+        <span>Innovative Thinking &amp; Implementation</span>
+        <div class="header-pill">
+          <div class="header-pill-dot"></div>
+          <span>Sustainability Dashboard</span>
+          <div class="header-pill-dot"></div>
+        </div>
+      </div>
+      <div class="header-logo-right">
+        <img src="polymath-logo.png" alt="Polymath College Logo" class="logo-img" />
+      </div>
+    </header>
+
+    <!-- MAIN GRID -->
+    <main class="grid">
+      <!-- ENVIRONMENT CARD -->
+      <section class="card" aria-label="Environment data from polyenv topic">
+        <div class="card-inner">
+          <div class="card-header">
+            <h2>Environment</h2>
+            <span class="pill">Topic: <code>polyenv</code></span>
+          </div>
+
+          <div class="env-grid">
+            <div class="env-item">
+              <div class="env-label">Temperature</div>
+              <div class="env-value">
+                <span id="tempValue">--</span>
+                <span class="env-unit">°C</span>
+              </div>
+              <div class="env-chip" id="tempStatus">Waiting…</div>
+            </div>
+
+            <div class="env-item">
+              <div class="env-label">Humidity</div>
+              <div class="env-value">
+                <span id="humidityValue">--</span>
+                <span class="env-unit">% RH</span>
+              </div>
+              <div class="env-chip" id="humidityStatus">Waiting…</div>
+            </div>
+
+            <div class="env-item">
+              <div class="env-label">Soil moisture</div>
+              <div class="env-value">
+                <span id="soilValue">--</span>
+                <span class="env-unit">%</span>
+              </div>
+              <div class="env-chip" id="soilStatus">Waiting…</div>
+            </div>
+
+            <div class="env-item">
+              <div class="env-label">Light</div>
+              <div class="env-value">
+                <span id="lightValue">--</span>
+                <span class="env-unit">lux</span>
+              </div>
+              <div class="env-chip" id="lightStatus">Waiting…</div>
+            </div>
+          </div>
+
+          <div class="updated-at">
+            Last update: <span id="envUpdatedAt">waiting for data…</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- WATERING CARD -->
+      <section class="card" aria-label="Watering system activation from polywatering topic">
+        <div class="card-inner">
+          <div class="card-header">
+            <h2>Watering System</h2>
+            <span class="pill">Topic: <code>polywatering</code></span>
+          </div>
+
+          <div class="watering-status">
+            <div class="watering-badge">
+              <div id="wateringDot" class="watering-dot off"></div>
+              <span id="wateringStateText">OFF</span>
+            </div>
+            <div class="watering-summary">
+              Activations today: <strong id="wateringCount">0</strong>
+            </div>
+          </div>
+
+          <div class="plant-wrapper" id="plantWrapper">
+            <img id="plantImage" src="plant-dry.png" alt="Greenhouse plant" class="plant-img" />
+            <div class="plant-rain"></div>
+          </div>
+
+          <div class="chart-container">
+            <canvas id="wateringChart"></canvas>
+          </div>
+
+          <div id="wateringList"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- NEWS / BLOG CARDS -->
+    <section class="news">
+      <div class="news-header">
+        <h2>News &amp; Updates</h2>
+        <span>Stories from ITI &amp; Polymath labs</span>
+      </div>
+      <div class="news-grid" id="newsGrid">
+        <!-- Filled from content/news-*.txt -->
+      </div>
+    </section>
+
+    <!-- BOTTOM CONTENT – LOADED FROM TEXT FILES -->
+    <section class="about">
+      <div class="about-inner">
+        <h2>Programs &amp; Projects</h2>
+
+        <p id="programsText">
+          <!-- Filled from content/programs.txt -->
+        </p>
+
+        <div class="badge-strip">
+          <span class="badge">IoT Labs</span>
+          <span class="badge">Smart Irrigation</span>
+          <span class="badge">Data Analytics</span>
+          <span class="badge">Student Projects</span>
+          <span class="badge">Industry 4.0</span>
+        </div>
+
+        <ul id="projectsList">
+          <!-- Filled from content/projects.txt -->
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ==========================
+    // MQTT CONFIG
+    // ==========================
+    const MQTT_WS_URL = "wss://broker.emqx.io:8084/mqtt";
+    const MQTT_OPTIONS = {
+      clean: true,
+      reconnectPeriod: 2000
+    };
+
+    const TOPIC_ENV = "polyenv";
+    const TOPIC_WATERING = "polywatering";
+
+    // DOM ELEMENTS
+    const tempValueEl = document.getElementById("tempValue");
+    const humidityValueEl = document.getElementById("humidityValue");
+    const soilValueEl = document.getElementById("soilValue");
+    const lightValueEl = document.getElementById("lightValue");
+
+    const tempStatusEl = document.getElementById("tempStatus");
+    const humidityStatusEl = document.getElementById("humidityStatus");
+    const soilStatusEl = document.getElementById("soilStatus");
+    const lightStatusEl = document.getElementById("lightStatus");
+
+    const envUpdatedAtEl = document.getElementById("envUpdatedAt");
+
+    const wateringDotEl = document.getElementById("wateringDot");
+    const wateringStateTextEl = document.getElementById("wateringStateText");
+    const wateringCountEl = document.getElementById("wateringCount");
+    const wateringListEl = document.getElementById("wateringList");
+
+    const plantWrapperEl = document.getElementById("plantWrapper");
+    const plantImageEl = document.getElementById("plantImage");
+
+    const newsGridEl = document.getElementById("newsGrid");
+
+    // ==========================
+    // WATERING CHART
+    // ==========================
+    const ctx = document.getElementById("wateringChart").getContext("2d");
+    const wateringTimes = [];
+    const wateringDurations = [];
+
+    const wateringChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: wateringTimes,
+        datasets: [{
+          label: "Watering Activations",
+          data: wateringDurations
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: { color: "#9ea4b0", maxRotation: 45, minRotation: 0 },
+            grid: { display: false }
+          },
+          y: {
+            ticks: { color: "#9ea4b0", stepSize: 1 },
+            beginAtZero: true,
+            grid: { color: "rgba(230,227,234,0.8)" }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: "#3d3f48" }
+          }
+        }
+      }
+    });
+
+    function formatTime(date) {
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    // ==========================
+    // ENVIRONMENT WIDGET
+    // ==========================
+    function updateEnvironmentWidget(data) {
+      if (typeof data.temperature !== "undefined") {
+        tempValueEl.textContent = data.temperature.toFixed(1);
+        if (data.temperature < 18) tempStatusEl.textContent = "Cool";
+        else if (data.temperature <= 30) tempStatusEl.textContent = "Comfort range";
+        else tempStatusEl.textContent = "High temperature";
+      }
+
+      if (typeof data.humidity !== "undefined") {
+        humidityValueEl.textContent = data.humidity.toFixed(0);
+        if (data.humidity < 40) humidityStatusEl.textContent = "Dry air";
+        else if (data.humidity <= 70) humidityStatusEl.textContent = "Ideal humidity";
+        else humidityStatusEl.textContent = "Very humid";
+      }
+
+      if (typeof data.soil !== "undefined") {
+        soilValueEl.textContent = data.soil.toFixed(0);
+        if (data.soil < 30) soilStatusEl.textContent = "Needs watering";
+        else if (data.soil <= 70) soilStatusEl.textContent = "Healthy moisture";
+        else soilStatusEl.textContent = "Soil wet";
+      }
+
+      if (typeof data.light !== "undefined") {
+        lightValueEl.textContent = data.light.toFixed(0);
+        if (data.light < 200) lightStatusEl.textContent = "Low light";
+        else if (data.light <= 800) lightStatusEl.textContent = "Good intensity";
+        else lightStatusEl.textContent = "Very bright";
+      }
+
+      envUpdatedAtEl.textContent = new Date().toLocaleString();
+    }
+
+    // ==========================
+    // WATERING WIDGET
+    // ==========================
+    let dailyActivationCount = 0;
+    let lastActivationDay = (new Date()).getDate();
+
+    function handleWateringMessage(data) {
+      const watering = !!data.watering;
+      const now = new Date();
+
+      const currentDay = now.getDate();
+      if (currentDay !== lastActivationDay) {
+        dailyActivationCount = 0;
+        lastActivationDay = currentDay;
+      }
+
+      if (watering) {
+        wateringDotEl.classList.remove("off");
+        wateringStateTextEl.textContent = "PUMP ON";
+
+        plantWrapperEl.classList.add("watering");
+        plantImageEl.src = "plant-wet.png";
+
+        dailyActivationCount++;
+        wateringCountEl.textContent = dailyActivationCount;
+
+        const label = formatTime(now);
+        wateringTimes.push(label);
+        wateringDurations.push(1);
+
+        if (wateringTimes.length > 15) {
+          wateringTimes.shift();
+          wateringDurations.shift();
+        }
+        wateringChart.update();
+
+        const entry = document.createElement("div");
+        entry.innerHTML = `<span>${label}</span><span>Watering activated</span>`;
+        wateringListEl.prepend(entry);
+      } else {
+        wateringDotEl.classList.add("off");
+        wateringStateTextEl.textContent = "OFF";
+
+        plantWrapperEl.classList.remove("watering");
+        plantImageEl.src = "plant-dry.png";
+      }
+    }
+
+    // ==========================
+    // MQTT CONNECT & SUBSCRIBE
+    // ==========================
+    let client;
+
+    function connectMQTT() {
+      client = mqtt.connect(MQTT_WS_URL, MQTT_OPTIONS);
+
+      client.on("connect", () => {
+        console.log("MQTT connected");
+        client.subscribe(TOPIC_ENV, (err) => {
+          if (!err) console.log("Subscribed to", TOPIC_ENV);
+        });
+        client.subscribe(TOPIC_WATERING, (err) => {
+          if (!err) console.log("Subscribed to", TOPIC_WATERING);
+        });
+      });
+
+      client.on("reconnect", () => {
+        console.log("Reconnecting MQTT...");
+      });
+
+      client.on("error", (err) => {
+        console.error("MQTT error:", err);
+      });
+
+      client.on("message", (topic, payload) => {
+        try {
+          const text = payload.toString();
+          const json = JSON.parse(text);
+
+          if (topic === TOPIC_ENV) {
+            updateEnvironmentWidget(json);
+          } else if (topic === TOPIC_WATERING) {
+            handleWateringMessage(json);
+          }
+        } catch (e) {
+          console.error("Failed to parse message", topic, e);
+        }
+      });
+    }
+
+    connectMQTT();
+
+    // ==========================
+    // LOAD TEXT CONTENT FROM FILES
+    // ==========================
+    async function loadTextIntoElement(url, elementId, asList = false) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const text = await res.text();
+        const el = document.getElementById(elementId);
+        if (!el) return;
+
+        if (asList) {
+          const lines = text
+            .split("\n")
+            .map(l => l.trim())
+            .filter(l => l.length > 0);
+          el.innerHTML = "";
+          lines.forEach(line => {
+            const li = document.createElement("li");
+            li.textContent = line;
+            el.appendChild(li);
+          });
+        } else {
+          el.textContent = text;
+        }
+      } catch (err) {
+        console.error("Error loading content from", url, err);
+      }
+    }
+
+    loadTextIntoElement("content/programs.txt", "programsText", false);
+    loadTextIntoElement("content/projects.txt", "projectsList", true);
+
+    // ==========================
+    // LOAD NEWS / BLOG CARDS
+    // ==========================
+    const NEWS_FILES = [
+      "content/news-1.txt",
+      "content/news-2.txt",
+      "content/news-3.txt"
+    ];
+
+    async function loadNewsArticles() {
+      for (const url of NEWS_FILES) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const text = await res.text();
+          const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+          if (lines.length === 0) continue;
+
+          const title = lines[0];
+          const body = lines.slice(1).join(" ");
+
+          const card = document.createElement("article");
+          card.className = "news-card";
+
+          const titleEl = document.createElement("div");
+          titleEl.className = "news-title";
+          titleEl.textContent = title;
+
+          const bodyEl = document.createElement("div");
+          bodyEl.className = "news-body";
+          bodyEl.textContent = body;
+
+          const metaEl = document.createElement("div");
+          metaEl.className = "news-meta";
+          const dateText = new Date().toLocaleDateString();
+          metaEl.textContent = dateText;
+
+          card.appendChild(titleEl);
+          card.appendChild(bodyEl);
+          card.appendChild(metaEl);
+
+          newsGridEl.appendChild(card);
+        } catch (err) {
+          console.error("Error loading news file", url, err);
+        }
+      }
+    }
+
+    loadNewsArticles();
+  </script>
+</body>
+</html>
