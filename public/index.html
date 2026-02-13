@@ -1,64 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <title>ITI with Polymath</title>
+  <title>ITI with Polymath - Environmental Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description"
+    content="Real-time environmental monitoring dashboard with temperature, humidity, light, AQI, TVOC, and eCO2 sensors">
 
   <!-- MQTT.js -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      /* Palette from Polymath logo */
+      /* Enhanced Color Palette */
       --pm-purple: #a377ac;
       --pm-purple-dark: #7b3f8e;
       --pm-purple-soft: #f4ecf7;
       --pm-purple-soft-strong: #eed9f5;
-      --pm-gray-dark: #3d3f48;
+      --pm-purple-glow: rgba(163, 119, 172, 0.4);
+      --pm-gray-dark: #2d3142;
       --pm-gray-mid: #8c92a0;
       --pm-gray-soft: #e6e3ea;
       --pm-bg: #fbf7ff;
-      --pm-bg-gradient: radial-gradient(circle at top left, #f4ecf7 0, #fbf7ff 45%, #ffffff 100%);
+
+      /* Accent colors for gauges */
+      --color-temp: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+      --color-humidity: linear-gradient(135deg, #4facfe, #00f2fe);
+      --color-light: linear-gradient(135deg, #ffd89b, #19547b);
+      --color-aqi: linear-gradient(135deg, #667eea, #764ba2);
+      --color-tvoc: linear-gradient(135deg, #f093fb, #f5576c);
+      --color-eco2: linear-gradient(135deg, #43e97b, #38f9d7);
+
+      --shadow-soft: 0 8px 32px rgba(163, 119, 172, 0.15);
+      --shadow-medium: 0 12px 48px rgba(123, 63, 142, 0.25);
+      --shadow-strong: 0 20px 60px rgba(123, 63, 142, 0.3);
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
 
     body {
       min-height: 100vh;
-      background: var(--pm-bg-gradient);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      background-size: 200% 200%;
+      animation: gradientShift 15s ease infinite;
       color: var(--pm-gray-dark);
-      display: flex;
+      overflow-x: hidden;
+    }
+
+    @keyframes gradientShift {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
     }
 
     .page {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 1.5rem;
+      padding: 2rem 1.5rem;
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 1.2rem;
+      gap: 2rem;
     }
 
-    /* HEADER WITH TWO LOGOS */
+    /* GLASSMORPHIC HEADER */
     header {
       display: grid;
       grid-template-columns: auto 1fr auto;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.9rem 1.25rem;
-      border-radius: 1.25rem;
-      background: linear-gradient(120deg, #fdfbff 0%, #f4ecf7 50%, #ffffff 100%);
-      border: 1px solid var(--pm-purple-soft-strong);
-      box-shadow: 0 20px 40px rgba(123, 63, 142, 0.18);
+      gap: 1.5rem;
+      padding: 1.5rem 2rem;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: var(--shadow-strong);
       position: relative;
       overflow: hidden;
     }
@@ -66,12 +101,27 @@
     header::before {
       content: "";
       position: absolute;
-      width: 220px;
-      height: 220px;
-      background: radial-gradient(circle, rgba(163, 119, 172, 0.3), transparent 60%);
-      top: -120px;
-      right: -60px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.3), transparent 70%);
+      top: -150px;
+      right: -80px;
       pointer-events: none;
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 0.6;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.1);
+      }
     }
 
     .header-logo-left,
@@ -86,6 +136,7 @@
       height: 180px;
       width: auto;
       object-fit: contain;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
     }
 
     .header-center {
@@ -94,422 +145,415 @@
     }
 
     .header-center h1 {
-      font-size: 2.25rem;
-      letter-spacing: 0.15em;
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--pm-purple-dark);
+      background: linear-gradient(135deg, #ffffff, #f0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 2px 20px rgba(255, 255, 255, 0.5);
     }
 
     .header-center span {
       display: block;
-      font-size: 1.0rem;
-      color: var(--pm-gray-dark);
-      margin-top: 0.15rem;
+      font-size: 1.1rem;
+      color: rgba(255, 255, 255, 0.9);
+      margin-top: 0.5rem;
+      font-weight: 300;
     }
 
     .header-pill {
-      margin-top: 0.35rem;
+      margin-top: 0.75rem;
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      font-size: 0.78rem;
-      padding: 0.3rem 0.7rem;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
       border-radius: 999px;
-      background: rgba(163, 119, 172, 0.12);
-      border: 1px solid rgba(163, 119, 172, 0.4);
-      color: var(--pm-purple-dark);
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     }
 
     .header-pill-dot {
-      width: 9px;
-      height: 9px;
+      width: 10px;
+      height: 10px;
       border-radius: 999px;
       background: #34d399;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.8);
+      animation: blink 2s ease-in-out infinite;
     }
 
-    /* LAYOUT */
-    .grid {
-      display: grid;
-      grid-template-columns: 1.7fr 1.3fr;
-      gap: 1.2rem;
-    }
+    @keyframes blink {
 
-    @media (max-width: 900px) {
-      .grid {
-        grid-template-columns: 1fr;
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
       }
     }
 
-    .card {
-      background: #ffffff;
-      border-radius: 1.25rem;
-      padding: 1.1rem 1.25rem;
-      border: 1px solid var(--pm-purple-soft-strong);
-      box-shadow: 0 12px 30px rgba(75, 79, 89, 0.08);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at top right, rgba(163, 119, 172, 0.12), transparent 55%);
-      opacity: 0.9;
-      pointer-events: none;
-    }
-
-    .card-inner {
-      position: relative;
-      z-index: 1;
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.75rem;
-    }
-
-    .card-header h2 {
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: var(--pm-purple-dark);
-    }
-
-    .pill {
-      font-size: 0.75rem;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      border: 1px solid var(--pm-purple-soft-strong);
-      background: rgba(244, 236, 247, 0.9);
-      color: var(--pm-purple-dark);
-    }
-
-    /* ENVIRONMENT WIDGET */
-    .env-grid {
+    /* SENSOR GRID - Made smaller */
+    .sensors-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.75rem;
-      margin-top: 0.25rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 1rem;
     }
 
-    .env-item {
-      background: var(--pm-purple-soft);
-      border-radius: 0.9rem;
-      padding: 0.65rem 0.75rem;
-      border: 1px solid rgba(163, 119, 172, 0.35);
+    @media (max-width: 900px) {
+      .sensors-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+    }
+
+    /* GLASSMORPHIC GAUGE CARD - Smaller & Smarter */
+    .gauge-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 1.2rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: var(--shadow-medium);
       position: relative;
       overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .env-item::after {
+    .gauge-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-strong);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .gauge-card::before {
       content: "";
       position: absolute;
-      width: 110px;
-      height: 110px;
-      border-radius: 999px;
-      border: 1px solid rgba(163, 119, 172, 0.3);
-      bottom: -70px;
-      right: -40px;
-    }
-
-    .env-label {
-      font-size: 0.75rem;
-      color: var(--pm-gray-dark);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-
-    .env-value {
-      margin-top: 0.08rem;
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--pm-purple-dark);
-      display: flex;
-      align-items: baseline;
-      gap: 0.12rem;
-    }
-
-    .env-unit {
-      font-size: 0.78rem;
-      color: var(--pm-gray-dark);
-    }
-
-    .env-chip {
-      display: inline-flex;
-      margin-top: 0.15rem;
-      font-size: 0.7rem;
-      padding: 0.15rem 0.55rem;
-      border-radius: 999px;
-      background: #ffffffaa;
-      color: var(--pm-purple-dark);
-    }
-
-    .updated-at {
-      margin-top: 0.65rem;
-      font-size: 0.78rem;
-      color: var(--pm-gray-mid);
-      text-align: right;
-    }
-
-    /* WATERING WIDGET WITH PLANT */
-    .watering-status {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      margin-top: 0.2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .watering-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.82rem;
-      padding: 0.3rem 0.7rem;
-      border-radius: 999px;
-      background: var(--pm-purple-soft);
-      border: 1px solid rgba(163, 119, 172, 0.4);
-      color: var(--pm-purple-dark);
-    }
-
-    .watering-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
-    }
-
-    .watering-dot.off {
-      background: #f97373;
-      box-shadow: 0 0 10px rgba(249, 115, 115, 0.7);
-    }
-
-    .watering-summary {
-      font-size: 0.8rem;
-      color: var(--pm-gray-mid);
-      text-align: right;
-    }
-
-    /* Plant visual */
-    .plant-wrapper {
-      margin-top: 0.6rem;
-      background: #fbf9ff;
-      border-radius: 0.9rem;
-      border: 1px solid rgba(230, 227, 234, 0.95);
-      padding: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-      height: 130px;
-    }
-
-    .plant-img {
-      max-height: 110px;
-      width: auto;
-      transition: transform 0.4s ease, filter 0.4s ease;
-      filter: saturate(0.7);
-    }
-
-    .plant-wrapper.watering .plant-img {
-      filter: saturate(1.15);
-      transform: translateY(3px);
-    }
-
-    .plant-rain {
-      position: absolute;
       inset: 0;
-      pointer-events: none;
+      background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.2), transparent 60%);
       opacity: 0;
-      background-image: linear-gradient(
-        to bottom,
-        rgba(163, 119, 172, 0.18) 0,
-        rgba(163, 119, 172, 0.02) 60%,
-        transparent 100%
-      );
-      mix-blend-mode: soft-light;
-      animation: rain-fall 0.6s linear infinite;
+      transition: opacity 0.4s ease;
     }
 
-    .plant-wrapper.watering .plant-rain {
+    .gauge-card:hover::before {
       opacity: 1;
     }
 
-    @keyframes rain-fall {
-      0% { transform: translateY(-40px); }
-      100% { transform: translateY(40px); }
+    .gauge-header {
+      text-align: center;
+      margin-bottom: 1rem;
     }
 
-    .chart-container {
-      margin-top: 0.75rem;
-      background: #fbf9ff;
-      border-radius: 0.9rem;
-      padding: 0.75rem;
-      border: 1px solid rgba(230, 227, 234, 0.95);
-      height: 170px;
+    .gauge-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: white;
+      opacity: 0.9;
     }
 
-    #wateringList {
-      margin-top: 0.7rem;
-      font-size: 0.8rem;
-      max-height: 150px;
-      overflow-y: auto;
-      padding-right: 0.25rem;
+    .gauge-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto;
     }
 
-    #wateringList div {
+    .gauge-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .gauge-value-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .gauge-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+      line-height: 1;
+    }
+
+    .gauge-unit {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
+      margin-top: 0.2rem;
+    }
+
+    .gauge-status {
+      margin-top: 0.8rem;
+      text-align: center;
+      font-size: 0.7rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+    }
+
+    /* WATERING SECTION - Simplified */
+    .watering-section {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: var(--shadow-medium);
       display: flex;
-      justify-content: space-between;
-      padding: 0.26rem 0;
-      border-bottom: 1px dashed rgba(230, 227, 234, 0.9);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      position: relative;
+      overflow: hidden;
     }
 
-    #wateringList span:last-child {
-      color: var(--pm-purple-dark);
+    .watering-section::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(34, 197, 94, 0.1), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .watering-section.active::before {
+      opacity: 1;
+      animation: waterPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes waterPulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 0.1;
+      }
+
+      50% {
+        transform: scale(1.1);
+        opacity: 0.3;
+      }
+    }
+
+    .watering-icon-container {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      margin-bottom: 1.5rem;
+    }
+
+    .watering-icon {
+      font-size: 120px;
+      transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.3));
+    }
+
+    .watering-section.active .watering-icon {
+      animation: waterDrop 1.5s ease-in-out infinite;
+    }
+
+    @keyframes waterDrop {
+
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+      }
+
+      50% {
+        transform: translateY(-10px) scale(1.05);
+      }
+    }
+
+    .watering-status-text {
+      font-size: 2rem;
+      font-weight: 700;
+      color: white;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .watering-status-text.on {
+      color: #34d399;
+      text-shadow: 0 0 30px rgba(52, 211, 153, 0.6);
+      animation: textGlow 2s ease-in-out infinite;
+    }
+
+    @keyframes textGlow {
+
+      0%,
+      100% {
+        text-shadow: 0 0 20px rgba(52, 211, 153, 0.6);
+      }
+
+      50% {
+        text-shadow: 0 0 40px rgba(52, 211, 153, 0.9);
+      }
+    }
+
+    .watering-subtitle {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.8);
+      text-align: center;
+      font-weight: 400;
+    }
+
+    .updated-at {
+      margin-top: 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
     }
 
     /* NEWS SECTION */
     .news {
-      margin-top: 0.4rem;
+      margin-top: 1rem;
     }
 
     .news-header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      margin-bottom: 0.4rem;
+      margin-bottom: 1.5rem;
     }
 
     .news-header h2 {
-      font-size: 0.95rem;
+      font-size: 1.2rem;
       text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: var(--pm-purple-dark);
+      letter-spacing: 0.15em;
+      color: white;
+      font-weight: 700;
     }
 
     .news-header span {
-      font-size: 0.8rem;
-      color: var(--pm-gray-mid);
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 400;
     }
 
     .news-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 0.8rem;
-    }
-
-    @media (max-width: 900px) {
-      .news-grid {
-        grid-template-columns: 1fr;
-      }
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
     }
 
     .news-card {
-      background: #ffffff;
-      border-radius: 1rem;
-      padding: 0.7rem 0.85rem;
-      border: 1px solid var(--pm-purple-soft-strong);
-      box-shadow: 0 6px 14px rgba(123, 63, 142, 0.09);
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: var(--shadow-soft);
       display: flex;
       flex-direction: column;
-      gap: 0.35rem;
+      gap: 0.75rem;
+      transition: all 0.3s ease;
+    }
+
+    .news-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-medium);
     }
 
     .news-title {
-      font-size: 0.86rem;
+      font-size: 1rem;
       font-weight: 600;
-      color: var(--pm-purple-dark);
+      color: white;
     }
 
     .news-body {
-      font-size: 0.8rem;
-      color: var(--pm-gray-dark);
-      line-height: 1.45;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.6;
     }
 
     .news-meta {
-      margin-top: 0.1rem;
-      font-size: 0.75rem;
-      color: var(--pm-gray-mid);
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.7);
     }
 
-    /* BOTTOM CONTENT (FROM TEXT FILES) */
+    /* ABOUT SECTION */
     .about {
-      margin-top: 0.8rem;
-      padding: 1rem 1.25rem;
-      border-radius: 1.25rem;
-      background: rgba(255, 255, 255, 0.96);
-      border: 1px solid var(--pm-purple-soft-strong);
-      box-shadow: 0 10px 18px rgba(75, 79, 89, 0.06);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .about::before {
-      content: "";
-      position: absolute;
-      width: 260px;
-      height: 260px;
-      border-radius: 999px;
-      border: 1px solid rgba(163, 119, 172, 0.24);
-      top: -180px;
-      left: -80px;
-    }
-
-    .about-inner {
-      position: relative;
-      z-index: 1;
+      margin-top: 1.5rem;
+      padding: 2rem;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: var(--shadow-medium);
     }
 
     .about h2 {
-      font-size: 0.95rem;
+      font-size: 1.2rem;
       text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: var(--pm-purple-dark);
-      margin-bottom: 0.45rem;
+      letter-spacing: 0.15em;
+      color: white;
+      font-weight: 700;
+      margin-bottom: 1rem;
     }
 
     .about p {
-      font-size: 0.9rem;
-      color: var(--pm-gray-dark);
-      line-height: 1.55;
-      margin-bottom: 0.35rem;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.7;
+      margin-bottom: 1rem;
     }
 
     .about ul {
-      margin-top: 0.4rem;
-      padding-left: 1rem;
-      font-size: 0.9rem;
-      color: var(--pm-gray-mid);
+      margin-top: 1rem;
+      padding-left: 1.5rem;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.85);
     }
 
     .about li {
-      margin-bottom: 0.2rem;
+      margin-bottom: 0.5rem;
     }
 
     .badge-strip {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.35rem;
-      margin: 0.3rem 0 0.4rem;
+      gap: 0.5rem;
+      margin: 1rem 0;
     }
 
     .badge {
-      font-size: 0.75rem;
-      padding: 0.22rem 0.55rem;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.8rem;
       border-radius: 999px;
-      border: 1px solid rgba(163, 119, 172, 0.3);
-      background: rgba(163, 119, 172, 0.12);
-      color: var(--pm-purple-dark);
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
     }
   </style>
 </head>
+
 <body>
   <div class="page">
     <!-- HEADER WITH ITI & POLYMATH LOGOS -->
@@ -519,10 +563,10 @@
       </div>
       <div class="header-center">
         <h1>ITI WITH POLYMATH</h1>
-        <span>Innovative Thinking &amp; Implementation</span>
+        <span>Innovative Thinking & Implementation</span>
         <div class="header-pill">
           <div class="header-pill-dot"></div>
-          <span>Sustainability Dashboard</span>
+          <span>Environmental Monitoring Dashboard</span>
           <div class="header-pill-dot"></div>
         </div>
       </div>
@@ -531,97 +575,117 @@
       </div>
     </header>
 
-    <!-- MAIN GRID -->
-    <main class="grid">
-      <!-- ENVIRONMENT CARD -->
-      <section class="card" aria-label="Environment data from polyenv topic">
-        <div class="card-inner">
-          <div class="card-header">
-            <h2>Environment</h2>
-            <span class="pill">Topic: <code>polyenv</code></span>
-          </div>
-
-          <div class="env-grid">
-            <div class="env-item">
-              <div class="env-label">Temperature</div>
-              <div class="env-value">
-                <span id="tempValue">--</span>
-                <span class="env-unit">°C</span>
-              </div>
-              <div class="env-chip" id="tempStatus">Waiting…</div>
-            </div>
-
-            <div class="env-item">
-              <div class="env-label">Humidity</div>
-              <div class="env-value">
-                <span id="humidityValue">--</span>
-                <span class="env-unit">% RH</span>
-              </div>
-              <div class="env-chip" id="humidityStatus">Waiting…</div>
-            </div>
-
-            <div class="env-item">
-              <div class="env-label">Soil moisture</div>
-              <div class="env-value">
-                <span id="soilValue">--</span>
-                <span class="env-unit">%</span>
-              </div>
-              <div class="env-chip" id="soilStatus">Waiting…</div>
-            </div>
-
-            <div class="env-item">
-              <div class="env-label">Light</div>
-              <div class="env-value">
-                <span id="lightValue">--</span>
-                <span class="env-unit">lux</span>
-              </div>
-              <div class="env-chip" id="lightStatus">Waiting…</div>
-            </div>
-          </div>
-
-          <div class="updated-at">
-            Last update: <span id="envUpdatedAt">waiting for data…</span>
+    <!-- SENSOR GAUGES GRID -->
+    <section class="sensors-grid">
+      <!-- Temperature Gauge -->
+      <div class="gauge-card" id="tempCard">
+        <div class="gauge-header">
+          <div class="gauge-label">🌡️ Temperature</div>
+        </div>
+        <div class="gauge-container">
+          <canvas id="tempGauge" class="gauge-canvas"></canvas>
+          <div class="gauge-value-container">
+            <div class="gauge-value" id="tempValue">--</div>
+            <div class="gauge-unit">°C</div>
           </div>
         </div>
-      </section>
+        <div class="gauge-status" id="tempStatus">Waiting...</div>
+      </div>
 
-      <!-- WATERING CARD -->
-      <section class="card" aria-label="Watering system activation from polywatering topic">
-        <div class="card-inner">
-          <div class="card-header">
-            <h2>Watering System</h2>
-            <span class="pill">Topic: <code>polywatering</code></span>
-          </div>
-
-          <div class="watering-status">
-            <div class="watering-badge">
-              <div id="wateringDot" class="watering-dot off"></div>
-              <span id="wateringStateText">OFF</span>
-            </div>
-            <div class="watering-summary">
-              Activations today: <strong id="wateringCount">0</strong>
-            </div>
-          </div>
-
-          <div class="plant-wrapper" id="plantWrapper">
-            <img id="plantImage" src="plant-dry.png" alt="Greenhouse plant" class="plant-img" />
-            <div class="plant-rain"></div>
-          </div>
-
-          <div class="chart-container">
-            <canvas id="wateringChart"></canvas>
-          </div>
-
-          <div id="wateringList"></div>
+      <!-- Humidity Gauge -->
+      <div class="gauge-card" id="humidityCard">
+        <div class="gauge-header">
+          <div class="gauge-label">💧 Humidity</div>
         </div>
-      </section>
-    </main>
+        <div class="gauge-container">
+          <canvas id="humidityGauge" class="gauge-canvas"></canvas>
+          <div class="gauge-value-container">
+            <div class="gauge-value" id="humidityValue">--</div>
+            <div class="gauge-unit">% RH</div>
+          </div>
+        </div>
+        <div class="gauge-status" id="humidityStatus">Waiting...</div>
+      </div>
+
+      <!-- Light Level Gauge -->
+      <div class="gauge-card" id="lightCard">
+        <div class="gauge-header">
+          <div class="gauge-label">☀️ Light Level</div>
+        </div>
+        <div class="gauge-container">
+          <canvas id="lightGauge" class="gauge-canvas"></canvas>
+          <div class="gauge-value-container">
+            <div class="gauge-value" id="lightValue">--</div>
+            <div class="gauge-unit">lux</div>
+          </div>
+        </div>
+        <div class="gauge-status" id="lightStatus">Waiting...</div>
+      </div>
+
+      <!-- AQI Gauge -->
+      <div class="gauge-card" id="aqiCard">
+        <div class="gauge-header">
+          <div class="gauge-label">🌿 Air Quality</div>
+        </div>
+        <div class="gauge-container">
+          <canvas id="aqiGauge" class="gauge-canvas"></canvas>
+          <div class="gauge-value-container">
+            <div class="gauge-value" id="aqiValue">--</div>
+            <div class="gauge-unit">AQI</div>
+          </div>
+        </div>
+        <div class="gauge-status" id="aqiStatus">Waiting...</div>
+      </div>
+
+      <!-- TVOC Gauge -->
+      <div class="gauge-card" id="tvocCard">
+        <div class="gauge-header">
+          <div class="gauge-label">🦠 TVOC</div>
+        </div>
+        <div class="gauge-container">
+          <canvas id="tvocGauge" class="gauge-canvas"></canvas>
+          <div class="gauge-value-container">
+            <div class="gauge-value" id="tvocValue">--</div>
+            <div class="gauge-unit">ppb</div>
+          </div>
+        </div>
+        <div class="gauge-status" id="tvocStatus">Waiting...</div>
+      </div>
+
+      <!-- eCO2 Gauge -->
+      <div class="gauge-card" id="eco2Card">
+        <div class="gauge-header">
+          <div class="gauge-label">🌱 eCO₂</div>
+        </div>
+        <div class="gauge-container">
+          <canvas id="eco2Gauge" class="gauge-canvas"></canvas>
+          <div class="gauge-value-container">
+            <div class="gauge-value" id="eco2Value">--</div>
+            <div class="gauge-unit">ppm</div>
+          </div>
+        </div>
+        <div class="gauge-status" id="eco2Status">Waiting...</div>
+      </div>
+    </section>
+
+    <div class="updated-at">
+      Last update: <span id="envUpdatedAt">waiting for data…</span>
+    </div>
+
+    <!-- SIMPLIFIED WATERING SECTION -->
+    <section class="watering-section" id="wateringSection">
+      <div class="watering-icon-container">
+        <div class="watering-icon" id="wateringIcon">💧</div>
+      </div>
+      <div class="watering-status-text" id="wateringStatusText">System Idle</div>
+      <div class="watering-subtitle" id="wateringSubtitle">Monitoring soil moisture...</div>
+    </section>
 
     <!-- NEWS / BLOG CARDS -->
     <section class="news">
       <div class="news-header">
-        <h2>News &amp; Updates</h2>
-        <span>Stories from ITI &amp; Polymath labs</span>
+        <h2>News & Updates</h2>
+        <span>Stories from ITI & Polymath labs</span>
       </div>
       <div class="news-grid" id="newsGrid">
         <!-- Filled from content/news-*.txt -->
@@ -630,25 +694,24 @@
 
     <!-- BOTTOM CONTENT – LOADED FROM TEXT FILES -->
     <section class="about">
-      <div class="about-inner">
-        <h2>Programs &amp; Projects</h2>
+      <h2>Programs & Projects</h2>
 
-        <p id="programsText">
-          <!-- Filled from content/programs.txt -->
-        </p>
+      <p id="programsText">
+        <!-- Filled from content/programs.txt -->
+      </p>
 
-        <div class="badge-strip">
-          <span class="badge">IoT Labs</span>
-          <span class="badge">Smart Irrigation</span>
-          <span class="badge">Data Analytics</span>
-          <span class="badge">Student Projects</span>
-          <span class="badge">Industry 4.0</span>
-        </div>
-
-        <ul id="projectsList">
-          <!-- Filled from content/projects.txt -->
-        </ul>
+      <div class="badge-strip">
+        <span class="badge">IoT Labs</span>
+        <span class="badge">Smart Irrigation</span>
+        <span class="badge">Data Analytics</span>
+        <span class="badge">Student Projects</span>
+        <span class="badge">Industry 4.0</span>
+        <span class="badge">Environmental Monitoring</span>
       </div>
+
+      <ul id="projectsList">
+        <!-- Filled from content/projects.txt -->
+      </ul>
     </section>
   </div>
 
@@ -659,157 +722,206 @@
     const MQTT_WS_URL = "wss://broker.emqx.io:8084/mqtt";
     const MQTT_OPTIONS = {
       clean: true,
-      reconnectPeriod: 2000
+      reconnectPeriod: 2000,
+      connectTimeout: 30 * 1000
     };
 
     const TOPIC_ENV = "polyenv";
     const TOPIC_WATERING = "polywatering";
 
-    // DOM ELEMENTS
-    const tempValueEl = document.getElementById("tempValue");
-    const humidityValueEl = document.getElementById("humidityValue");
-    const soilValueEl = document.getElementById("soilValue");
-    const lightValueEl = document.getElementById("lightValue");
-
-    const tempStatusEl = document.getElementById("tempStatus");
-    const humidityStatusEl = document.getElementById("humidityStatus");
-    const soilStatusEl = document.getElementById("soilStatus");
-    const lightStatusEl = document.getElementById("lightStatus");
-
-    const envUpdatedAtEl = document.getElementById("envUpdatedAt");
-
-    const wateringDotEl = document.getElementById("wateringDot");
-    const wateringStateTextEl = document.getElementById("wateringStateText");
-    const wateringCountEl = document.getElementById("wateringCount");
-    const wateringListEl = document.getElementById("wateringList");
-
-    const plantWrapperEl = document.getElementById("plantWrapper");
-    const plantImageEl = document.getElementById("plantImage");
-
-    const newsGridEl = document.getElementById("newsGrid");
-
     // ==========================
-    // WATERING CHART
+    // GAUGE DRAWING FUNCTIONS
     // ==========================
-    const ctx = document.getElementById("wateringChart").getContext("2d");
-    const wateringTimes = [];
-    const wateringDurations = [];
+    function drawGauge(canvasId, value, max, color1, color2) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
 
-    const wateringChart = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: wateringTimes,
-        datasets: [{
-          label: "Watering Activations",
-          data: wateringDurations
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            ticks: { color: "#9ea4b0", maxRotation: 45, minRotation: 0 },
-            grid: { display: false }
-          },
-          y: {
-            ticks: { color: "#9ea4b0", stepSize: 1 },
-            beginAtZero: true,
-            grid: { color: "rgba(230,227,234,0.8)" }
-          }
-        },
-        plugins: {
-          legend: {
-            labels: { color: "#3d3f48" }
-          }
-        }
-      }
-    });
+      const ctx = canvas.getContext('2d');
+      // Set canvas size to match display size with high DPI
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
 
-    function formatTime(date) {
-      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = Math.min(width, height) / 2 - 30;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Background circle
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 16;
+      ctx.stroke();
+
+      // Progress arc
+      const percent = Math.min(Math.max(value / max, 0), 1);
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + (2 * Math.PI * percent);
+
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, color1);
+      gradient.addColorStop(1, color2);
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 16;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Glow effect
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = color1;
+      ctx.stroke();
     }
 
     // ==========================
-    // ENVIRONMENT WIDGET
+    // SENSOR UPDATE FUNCTIONS
     // ==========================
+    function updateTemperature(temp) {
+      if (temp === null || temp === undefined) return;
+
+      document.getElementById('tempValue').textContent = temp.toFixed(1);
+      drawGauge('tempGauge', temp, 50, '#ff6b6b', '#ee5a6f');
+
+      const statusEl = document.getElementById('tempStatus');
+      if (temp < 18) {
+        statusEl.textContent = '❄️ Cool';
+      } else if (temp <= 30) {
+        statusEl.textContent = '✓ Comfortable';
+      } else {
+        statusEl.textContent = '🔥 Hot';
+      }
+    }
+
+    function updateHumidity(humidity) {
+      if (humidity === null || humidity === undefined) return;
+
+      document.getElementById('humidityValue').textContent = humidity.toFixed(0);
+      drawGauge('humidityGauge', humidity, 100, '#4facfe', '#00f2fe');
+
+      const statusEl = document.getElementById('humidityStatus');
+      if (humidity < 40) {
+        statusEl.textContent = '💨 Dry Air';
+      } else if (humidity <= 70) {
+        statusEl.textContent = '✓ Ideal';
+      } else {
+        statusEl.textContent = '💧 Very Humid';
+      }
+    }
+
+    function updateLight(light) {
+      if (light === null || light === undefined) return;
+
+      document.getElementById('lightValue').textContent = light.toFixed(0);
+      drawGauge('lightGauge', light, 1000, '#ffd89b', '#19547b');
+
+      const statusEl = document.getElementById('lightStatus');
+      if (light < 200) {
+        statusEl.textContent = '🌙 Low Light';
+      } else if (light <= 800) {
+        statusEl.textContent = '☀️ Good';
+      } else {
+        statusEl.textContent = '💡 Very Bright';
+      }
+    }
+
+    function updateAQI(aqi) {
+      if (aqi === null || aqi === undefined) return;
+
+      document.getElementById('aqiValue').textContent = aqi.toFixed(0);
+      drawGauge('aqiGauge', aqi, 5, '#667eea', '#764ba2');
+
+      const statusEl = document.getElementById('aqiStatus');
+      if (aqi === 1) {
+        statusEl.textContent = '⭐ Excellent';
+      } else if (aqi === 2) {
+        statusEl.textContent = '✓ Good';
+      } else if (aqi === 3) {
+        statusEl.textContent = '⚠️ Moderate';
+      } else if (aqi === 4) {
+        statusEl.textContent = '⚠️ Poor';
+      } else {
+        statusEl.textContent = '🚨 Very Poor';
+      }
+    }
+
+    function updateTVOC(tvoc) {
+      if (tvoc === null || tvoc === undefined) return;
+
+      document.getElementById('tvocValue').textContent = tvoc.toFixed(0);
+      drawGauge('tvocGauge', tvoc, 500, '#f093fb', '#f5576c');
+
+      const statusEl = document.getElementById('tvocStatus');
+      if (tvoc < 100) {
+        statusEl.textContent = '✓ Excellent';
+      } else if (tvoc <= 300) {
+        statusEl.textContent = '✓ Good';
+      } else if (tvoc <= 1000) {
+        statusEl.textContent = '⚠️ Moderate';
+      } else {
+        statusEl.textContent = '🚨 High';
+      }
+    }
+
+    function updateECO2(eco2) {
+      if (eco2 === null || eco2 === undefined) return;
+
+      document.getElementById('eco2Value').textContent = eco2.toFixed(0);
+      drawGauge('eco2Gauge', eco2, 2000, '#43e97b', '#38f9d7');
+
+      const statusEl = document.getElementById('eco2Status');
+      if (eco2 < 600) {
+        statusEl.textContent = '✓ Excellent';
+      } else if (eco2 <= 1000) {
+        statusEl.textContent = '✓ Good';
+      } else if (eco2 <= 1500) {
+        statusEl.textContent = '⚠️ Moderate';
+      } else {
+        statusEl.textContent = '🚨 High';
+      }
+    }
+
     function updateEnvironmentWidget(data) {
-      if (typeof data.temperature !== "undefined") {
-        tempValueEl.textContent = data.temperature.toFixed(1);
-        if (data.temperature < 18) tempStatusEl.textContent = "Cool";
-        else if (data.temperature <= 30) tempStatusEl.textContent = "Comfort range";
-        else tempStatusEl.textContent = "High temperature";
-      }
+      console.log("Received env data:", data);
+      updateTemperature(data.temperature);
+      updateHumidity(data.humidity);
+      updateLight(data.light);
+      updateAQI(data.aqi);
+      updateTVOC(data.tvoc);
+      updateECO2(data.eco2);
 
-      if (typeof data.humidity !== "undefined") {
-        humidityValueEl.textContent = data.humidity.toFixed(0);
-        if (data.humidity < 40) humidityStatusEl.textContent = "Dry air";
-        else if (data.humidity <= 70) humidityStatusEl.textContent = "Ideal humidity";
-        else humidityStatusEl.textContent = "Very humid";
-      }
-
-      if (typeof data.soil !== "undefined") {
-        soilValueEl.textContent = data.soil.toFixed(0);
-        if (data.soil < 30) soilStatusEl.textContent = "Needs watering";
-        else if (data.soil <= 70) soilStatusEl.textContent = "Healthy moisture";
-        else soilStatusEl.textContent = "Soil wet";
-      }
-
-      if (typeof data.light !== "undefined") {
-        lightValueEl.textContent = data.light.toFixed(0);
-        if (data.light < 200) lightStatusEl.textContent = "Low light";
-        else if (data.light <= 800) lightStatusEl.textContent = "Good intensity";
-        else lightStatusEl.textContent = "Very bright";
-      }
-
-      envUpdatedAtEl.textContent = new Date().toLocaleString();
+      document.getElementById('envUpdatedAt').textContent = new Date().toLocaleString();
     }
 
     // ==========================
-    // WATERING WIDGET
+    // WATERING WIDGET - SIMPLIFIED
     // ==========================
-    let dailyActivationCount = 0;
-    let lastActivationDay = (new Date()).getDate();
+    const wateringSectionEl = document.getElementById("wateringSection");
+    const wateringIconEl = document.getElementById("wateringIcon");
+    const wateringStatusTextEl = document.getElementById("wateringStatusText");
+    const wateringSubtitleEl = document.getElementById("wateringSubtitle");
 
     function handleWateringMessage(data) {
       const watering = !!data.watering;
-      const now = new Date();
-
-      const currentDay = now.getDate();
-      if (currentDay !== lastActivationDay) {
-        dailyActivationCount = 0;
-        lastActivationDay = currentDay;
-      }
+      console.log("Watering status:", watering);
 
       if (watering) {
-        wateringDotEl.classList.remove("off");
-        wateringStateTextEl.textContent = "PUMP ON";
-
-        plantWrapperEl.classList.add("watering");
-        plantImageEl.src = "plant-wet.png";
-
-        dailyActivationCount++;
-        wateringCountEl.textContent = dailyActivationCount;
-
-        const label = formatTime(now);
-        wateringTimes.push(label);
-        wateringDurations.push(1);
-
-        if (wateringTimes.length > 15) {
-          wateringTimes.shift();
-          wateringDurations.shift();
-        }
-        wateringChart.update();
-
-        const entry = document.createElement("div");
-        entry.innerHTML = `<span>${label}</span><span>Watering activated</span>`;
-        wateringListEl.prepend(entry);
+        wateringSectionEl.classList.add("active");
+        wateringIconEl.textContent = "💦";
+        wateringStatusTextEl.textContent = "WATERING ACTIVE";
+        wateringStatusTextEl.classList.add("on");
+        wateringSubtitleEl.textContent = "System is currently irrigating plants";
       } else {
-        wateringDotEl.classList.add("off");
-        wateringStateTextEl.textContent = "OFF";
-
-        plantWrapperEl.classList.remove("watering");
-        plantImageEl.src = "plant-dry.png";
+        wateringSectionEl.classList.remove("active");
+        wateringIconEl.textContent = "💧";
+        wateringStatusTextEl.textContent = "System Idle";
+        wateringStatusTextEl.classList.remove("on");
+        wateringSubtitleEl.textContent = "Monitoring soil moisture...";
       }
     }
 
@@ -819,29 +931,37 @@
     let client;
 
     function connectMQTT() {
+      console.log("Connecting to MQTT at:", MQTT_WS_URL);
       client = mqtt.connect(MQTT_WS_URL, MQTT_OPTIONS);
 
       client.on("connect", () => {
-        console.log("MQTT connected");
+        console.log("✅ MQTT connected successfully");
         client.subscribe(TOPIC_ENV, (err) => {
-          if (!err) console.log("Subscribed to", TOPIC_ENV);
+          if (!err) console.log("📡 Subscribed to topic:", TOPIC_ENV);
+          else console.error("❌ Subscription error [env]:", err);
         });
         client.subscribe(TOPIC_WATERING, (err) => {
-          if (!err) console.log("Subscribed to", TOPIC_WATERING);
+          if (!err) console.log("📡 Subscribed to topic:", TOPIC_WATERING);
+          else console.error("❌ Subscription error [polywatering]:", err);
         });
       });
 
       client.on("reconnect", () => {
-        console.log("Reconnecting MQTT...");
+        console.log("🔄 Reconnecting to MQTT...");
+      });
+
+      client.on("offline", () => {
+        console.warn("⚠️ MQTT Client is offline");
       });
 
       client.on("error", (err) => {
-        console.error("MQTT error:", err);
+        console.error("❌ MQTT Connection Error:", err);
       });
 
       client.on("message", (topic, payload) => {
         try {
           const text = payload.toString();
+          console.log(`📩 New message on [${topic}]:`, text);
           const json = JSON.parse(text);
 
           if (topic === TOPIC_ENV) {
@@ -850,7 +970,7 @@
             handleWateringMessage(json);
           }
         } catch (e) {
-          console.error("Failed to parse message", topic, e);
+          console.error("⚠️ Failed to parse message body:", topic, e);
         }
       });
     }
@@ -899,6 +1019,8 @@
       "content/news-3.txt"
     ];
 
+    const newsGridEl = document.getElementById("newsGrid");
+
     async function loadNewsArticles() {
       for (const url of NEWS_FILES) {
         try {
@@ -939,6 +1061,21 @@
     }
 
     loadNewsArticles();
+
+    // Initialize gauges with sample values for testing
+    // These will be updated when real data arrives
+    setTimeout(() => {
+      if (document.getElementById('tempValue').textContent === '--') {
+        // Draw initial empty gauges
+        drawGauge('tempGauge', 0, 50, '#ff6b6b', '#ee5a6f');
+        drawGauge('humidityGauge', 0, 100, '#4facfe', '#00f2fe');
+        drawGauge('lightGauge', 0, 1000, '#ffd89b', '#19547b');
+        drawGauge('aqiGauge', 0, 5, '#667eea', '#764ba2');
+        drawGauge('tvocGauge', 0, 500, '#f093fb', '#f5576c');
+        drawGauge('eco2Gauge', 0, 2000, '#43e97b', '#38f9d7');
+      }
+    }, 500);
   </script>
 </body>
+
 </html>
